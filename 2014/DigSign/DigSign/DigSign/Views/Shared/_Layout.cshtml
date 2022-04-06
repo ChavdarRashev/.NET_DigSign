@@ -1,0 +1,27 @@
+﻿
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>@ViewBag.Title</title>
+   
+</head>
+<body>
+    <applet id="signApplet"
+			code="bg.nra.inetdec.SignApplet"
+			archive="@Url.Content("~/Content/Java/SignApplet.jar")"
+			width="1"
+			height="1">
+		<param name="cbInsert" value="SCInserted">
+		<param name="cbRemove" value="SCRemoved">
+	</applet>
+
+     @Scripts.Render("~/Scripts/JavaScript1.js")
+
+
+    @RenderBody()
+
+   
+</body>
+</html>

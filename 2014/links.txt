@@ -1,0 +1,7 @@
+http://www.developer.com/java/other/article.php/3587361/Java-Applet-for-Signing-with-a-Smart-Card.htm
+
+http://www.developer.com/java/web/article.php/3298051/NakovDocumentSigner-A-System-for-Digitally-Signing-Documents-in-Web-Applications.htm
+
+http://msdn.microsoft.com/en-us/library/ms229950(v=vs.110).aspx
+
+http://www.nakov.com/research/documents-signing/

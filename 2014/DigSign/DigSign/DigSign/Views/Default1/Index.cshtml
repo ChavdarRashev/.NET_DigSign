@@ -1,0 +1,33 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+<html>
+<head>
+</head>
+<body>
+			
+	@ViewBag.err
+	
+    @using (Html.BeginForm()) {
+	<input type="button" id="btnTest" name="btnTest" onclick="testSign();" value="Test Sign" />
+	<br/>
+	<table>
+		<tr>
+			<td>
+				input:<br/>
+				<textarea rows="20" cols="50" id="txInput" name="plainText">test
+				</textarea>
+			</td>
+			<td>
+				signed content:<br/>
+				<textarea rows="20" cols="50" id="txSigned" name="pkcs7">	
+				</textarea> 
+			</td>
+		</tr>
+	</table>
+        <input type="submit" value="Submit"/>
+    }
+	<br/>
+</body>
+</html>

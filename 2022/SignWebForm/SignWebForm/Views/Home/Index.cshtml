@@ -1,0 +1,101 @@
+﻿@{
+    ViewData["Title"] = "Web Form Sign";
+}
+
+
+
+<div>
+    <form asp-controller="Home" asp-action="Report">
+
+
+        <div class="row py-1"> <label for="name">  Name: &nbsp;&nbsp;</label> <input type="text" name="name" id="name"/></div>
+        <div class="row py-1"> <label for="egn"> EGN: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </label> <input type="text" name="egn" id="egn"/></div>
+        <div class="row py-1"> <label for="money"> Money: &nbsp;</label> <input type="number" min="1" step="any" name="money" id="money"/></div>
+
+        <div class="row py-4">
+            <div class="col">
+                <label for="xml" style="vertical-align: top;"> XML </label>
+                <textarea rows="15" cols="50" id="xml" name="XML"> &lt;Envelope xmlns=&quot;urn:envelope&quot;&gt;&lt;/Envelope&gt;</textarea>
+            </div>
+            <div class="col">
+                <label for="result" style="vertical-align: top;"> Signed content: </label>
+                <textarea rows="15" cols="50" id="result" name="XMLsign">	</textarea>
+            </div>
+        </div>
+
+        <div style="margin: 20px">
+            <input type="button" id="xml-sign" name="btnTest" value="Test Sign" />
+        </div>
+
+        <div class="row py-4">
+            <input type="submit" value="Submit" />
+        </div>
+
+    </form>
+
+</div>
+
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/polyfill.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.helpers.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/jquery.js"></script>
+<script>
+    (function () {
+       
+        $('#xml-sign').on('click', function (e) {
+            e.preventDefault();
+
+            //make xml string from form data
+            var name = document.getElementById('name').value;
+            var egn = document.getElementById('egn').value;
+            var money = document.getElementById('money').value;
+
+            var generatedXML = "<data><name>" + name + "</name><egn>" + escape(egn) + "</egn><money>" + escape(money) + "</money></data>";
+            $("#xml").val(generatedXML);
+
+            //var val = document.getElementById('xml').value;
+            val = generatedXML
+            if (!val.length) {
+                return alert('Не сте въвели XML за подписване');
+            }
+            SCS.signXML(val)
+                .then(function (json) {
+                    //document.getElementById('result').value = JSON.stringify(json);
+                    document.getElementById('result').value = SCS.Base64Decode(json.signature);
+                })
+                .then(null, function (err) {
+                    document.getElementById('result').value = 'ERROR:' + "\r\n" + err.message;
+                });
+        });
+        $('#file-sign').on('click', function (e) {
+            e.preventDefault();
+            var files = document.getElementById('file').files;
+            if (!files.length) {
+                return alert('Не сте избрали файл за подписване');
+            }
+            var reader = new FileReader();
+            reader.onloadend = function (e) {
+                SCS.sign(e.target.result)
+                    .then(function (json) {
+                        document.getElementById('result').value = JSON.stringify(json);
+                    })
+                    .then(null, function (err) {
+                        document.getElementById('result').value = 'ERROR:' + "\r\n" + err.message;
+                    });
+            };
+            reader.readAsText(files[0]);
+        });
+        $('#pick-sign').on('click', function (e) {
+            e.preventDefault();
+            SCS.signFile()
+                .then(function (json) {
+                    document.getElementById('result').value = JSON.stringify(json);
+                })
+                .then(null, function (err) {
+                    document.getElementById('result').value = 'ERROR:' + "\r\n" + err.message;
+                });
+        });
+    }());
+</script>
+
+
