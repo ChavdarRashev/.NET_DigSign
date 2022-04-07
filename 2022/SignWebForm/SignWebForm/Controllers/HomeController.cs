@@ -1,13 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 using SignWebForm.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography.Xml;
+using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -23,6 +26,16 @@ namespace SignWebForm.Controllers
         }
 
         public IActionResult Index()
+        {
+            return View();
+        }
+
+        public IActionResult File()
+        {
+            return View();
+        }
+
+        public IActionResult Text()
         {
             return View();
         }
@@ -51,8 +64,9 @@ namespace SignWebForm.Controllers
             // Load the signature node.
             signedXml.LoadXml((XmlElement)nodeList[0]);
 
-            // Check the signature and return the result.
-            var result = signedXml.CheckSignature();
+           //Проверка на подписаните данни - проверява дали подписаните данни отговарят на тези които са в XML-a, не се проверява дали сертификата е валиден. Тази проверка се прави по-надолу
+            var resultSignature = signedXml.CheckSignature();
+
 
 
             string plainText = null;
@@ -61,23 +75,131 @@ namespace SignWebForm.Controllers
             {
                 plainText = xElem.InnerText;
             }
-
            
             byte[] wer = StrToByteArray(plainText);
             X509Certificate2 cert = new X509Certificate2(wer, string.Empty, X509KeyStorageFlags.MachineKeySet);
 
+            // Check the signature and return the result.
+            // Тук се прави освен проверка на подписа и валидността на сертификата едновременно 
+            // var result = signedXml.CheckSignature(cert, false);
+
+            //Поради оскъдната документация за проверка на подписа и сертификата се използват поотделно resultSignature = signedXml.CheckSignature() и resultCert = cert.Verify(), а не signedXml.CheckSignature(cert, false);
+
+
             string SerialNumber = cert.SerialNumber;
             string Subject = cert.Subject;
             string Issuer = cert.Issuer;
-            string Thumbprint = cert.Thumbprint;
+            string Thumbprint = cert.Thumbprint;  // Уникален параметър , който може да служи за идентификация. Примерно при логване с клиент сертификат трябва да се провери дали Thumbprint от сесията при ligin-a съответсва с Thumbprint на подписа
             //string IssuerName = cert.IssuerName;
-            bool fff = cert.Verify();  // Проверка на сертификат, подобна на тази по-горе. Не се проверява веригата, ревокейшун листа и дали е издаден от съответния CA
-                                        // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
-           // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
+            
+            bool resultCert = cert.Verify();  // Проверка на сертификат. Проверява се дали сертификата е revocked, но не се проверява сертификатите по веригата дали те а са revoked,  и дали е издаден от съответния CA за повече информация  http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
+           
+            // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател този метод може да се види в по-старата версия от 2014 (директория 2014)
 
-
+            if (resultSignature & resultCert){
+                // Успешна проверка
+            }
+            else
+            {
+               // Неуспешна проверка
+            }
 
             return View(res);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReportFile(InputFileModel fileInput)
+        {
+            var formFile = fileInput.file;
+
+          
+            JObject jsonSign = JObject.Parse(fileInput.XMLsignFile);
+            string pkcs7 = (string)jsonSign["signature"];
+
+            var filePath = Path.GetTempFileName();
+
+            using (var stream = System.IO.File.Create(filePath))
+            {
+                await formFile.CopyToAsync(stream);
+            }
+
+           
+            string inputContent = System.IO.File.ReadAllText(filePath);
+
+            byte[] wer = StrToByteArray(inputContent);
+
+            ContentInfo contentInfo = new ContentInfo(wer);
+
+            SignedCms cms = new SignedCms(contentInfo, true);
+            cms.Decode(Convert.FromBase64String(pkcs7));
+            bool wwb = cms.Detached;
+
+            ContentInfo ci = cms.ContentInfo;
+
+            string err = "no error";
+
+
+            try
+            {
+                cms.CheckSignature(false); // Проверява се signature и подписа, проверява се само валидността на подписа, но не и на веригта
+            }
+
+            catch (Exception e)
+            {
+                err = e.Message;
+            }
+
+
+
+
+            ViewBag.signFile = fileInput.XMLsignFile;
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReportText(SignFormText formText)
+        {
+            
+
+            JObject jsonSign = JObject.Parse(formText.TextSign);
+            string pkcs7 = (string)jsonSign["signature"];
+
+            string tmp = formText.Text;
+            var ddd = Encoding.UTF8.GetBytes(tmp);
+            tmp = Convert.ToString(ddd);
+            
+
+            byte[] wer = StrToByteArray(formText.Text);
+
+            ContentInfo contentInfo = new ContentInfo(wer);
+
+            SignedCms cms = new SignedCms(contentInfo, true);
+            cms.Decode(Convert.FromBase64String(pkcs7));
+            bool wwb = cms.Detached;
+
+            ContentInfo ci = cms.ContentInfo;
+
+            string err = "no error";
+
+
+            try
+            {
+              cms.CheckSignature(false); // Проверява се signature и подписа, проверява се само валидността на подписа, но не и на веригта
+            }
+
+            catch (Exception e)
+            {
+                err = e.Message;
+            }
+
+
+
+
+            ViewBag.signText = formText.TextSign;
+            return View();
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -92,79 +214,9 @@ namespace SignWebForm.Controllers
             return encoding.GetBytes(str);
         }
 
-        /*
-        string ValidateCert(X509Certificate2 cert) // X509Certificate2 cert - сертификата, който валидираме 
-        {
-
-            string retValue = "no error";  // Връщаната стойност no error - верификацията е успешен валиден сертификат
-
-            X509Chain chain = new X509Chain();
-            // check entire chain for revocation 
-            chain.ChainPolicy.RevocationFlag = X509RevocationFlag.EntireChain;
-            // check online and offline revocation lists 
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.Online; // X509RevocationMode.Offline; 
-            // timeout for online revocation list 
-            chain.ChainPolicy.UrlRetrievalTimeout = new TimeSpan(0, 0, 30);
-            // no exceptions, check all properties 
-            chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
-            // modify time of verification 
-            //chain.ChainPolicy.VerificationTime = new DateTime(1999, 1, 1); 
-
-
-            X509Certificate2Collection certificates = new X509Certificate2Collection();
-
-            string filePath = HttpContext.Server.MapPath("~/Content/certificates/RootCA5_PEM.cer");
-            string filePath1 = HttpContext.Server.MapPath("~/Content/certificates/StampIT_Primary_Root_CA_base64.crt");
-
-            certificates.Import(filePath);
-            certificates.Import(filePath1);
-
-
-            //chain.ChainPolicy.ExtraStore.AddRange(certificates);
-            //chain.ChainPolicy.ExtraStore.Add(certificates);    //Очаквам след като по този начин се добавят сертификати - root CA израза chain.Build(cert) по-долу да върне false за сертификат , чийто  root CA не е добавен чрез chain.ChainPolicy.ExtraStore.Add - но това не е така  винаги chain.Build(cert) връща true не зависимо дали root CA за дадения сертификат е добавен или не.
+       
 
 
 
-            bool isChainValid = chain.Build(cert);
-            if (chain.ChainStatus.Length != 0)
-            {
-                var vbn = chain.ChainStatus[0].StatusInformation;
-            }
-
-
-            if (!isChainValid)   // Тук се взимат всички съобщенията за грешките относно веригата revocation list и т.н
-            {
-                string[] errors = chain.ChainStatus
-                    .Select(x => String.Format("{0} ({1})", x.StatusInformation.Trim(), x.Status))
-                    .ToArray();
-                retValue = "Unknown errors.";
-
-                if (errors != null && errors.Length > 0)
-                {
-                    retValue = String.Join(", ", errors);
-                }
-
-                // throw new Exception("Trust chain did not complete to the known authority anchor. Errors: " + retValue);
-            }
-
-            // http://stackoverflow.com/questions/6497040/how-do-i-validate-that-a-certificate-was-created-by-a-particular-certification-a?rq=1
-            // This piece makes sure it actually matches your known root
-            bool flagCA = false;
-            foreach (X509Certificate2 Cert in certificates)
-            {
-                if (chain.ChainElements
-                    .Cast<X509ChainElement>()
-                    .Any(x => x.Certificate.Thumbprint == Cert.Thumbprint))
-                {
-                    flagCA = true;
-                }
-            }
-
-            if (!flagCA) retValue += "Trust chain did not complete to the known any authority anchor. Thumbprints did not match.";
-
-
-            return retValue;
-        }
-        */
     }
 }

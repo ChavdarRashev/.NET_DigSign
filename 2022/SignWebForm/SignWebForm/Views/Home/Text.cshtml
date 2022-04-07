@@ -1,0 +1,62 @@
+﻿@{
+    ViewData["Title"] = "Web Form Sign";
+}
+
+
+
+<div>
+    <form asp-controller="Home" asp-action="ReportText">
+
+
+        
+        <div class="row py-4">
+            <div class="col">
+                <label for="xml" style="vertical-align: top;"> Text </label>
+                <textarea rows="15" cols="50" id="text" name="text"> &lt;Envelope xmlns=&quot;urn:envelope&quot;&gt;&lt;/Envelope&gt;</textarea>
+            </div>
+            <div class="col">
+                <label for="result" style="vertical-align: top;"> Signed content: </label>
+                <textarea rows="15" cols="50" id="TextSign" name="TextSign"></textarea>
+            </div>
+        </div>
+
+        <div style="margin: 20px">
+            <input type="button" id="text-sign" name="btnTest" value="Test Sign" />
+        </div>
+
+        <div class="row py-4">
+            <input type="submit" value="Submit" />
+        </div>
+
+    </form>
+
+</div>
+
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/polyfill.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.helpers.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/jquery.js"></script>
+<script>
+    (function () {
+
+        $('#text-sign').on('click', function (e) {
+            e.preventDefault();
+            var val = document.getElementById('text').value;
+            if (!val.length) {
+                return alert('Не сте въвели текст за подписване');
+            }
+            SCS.sign(val)
+                .then(function (json) {
+                    document.getElementById('TextSign').value = JSON.stringify(json);
+                    //document.getElementById('TextSign').value = JSON.Base64Decode(json);
+                })
+                .then(null, function (err) {
+                    document.getElementById('TextSign').value = 'ERROR:' + "\r\n" + err.message;
+                });
+        });
+
+
+    }());
+</script>
+
+

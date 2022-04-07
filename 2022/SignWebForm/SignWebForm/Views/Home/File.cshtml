@@ -1,0 +1,77 @@
+﻿@model SignWebForm.Models.InputFileModel
+@{
+    ViewData["Title"] = "Web Form with file Sign";
+}
+
+
+
+<div>
+    <form asp-controller="Home" asp-action="ReportFile" enctype="multipart/form-data" method="post" >
+
+
+        <dl>
+
+            <dt>
+                <label asp-for="file"></label><span class="text-warning">*</span>
+            </dt>
+            <dd>
+                <input asp-for="file" type="file" />
+                <span asp-validation-for="file"></span>
+            </dd>
+
+            <dd style="margin: 20px">
+                <input type="button" id="file-sign" name="btnTest" value="Test Sign" />
+            </dd>
+
+            <dt>
+               <label asp-for="XMLsignFile" style="vertical-align: top;"> Signed content: </label>
+            </dt>
+            <dd>               
+                <textarea rows="10" cols="50" asp-for="XMLsignFile">	</textarea>
+            </dd>
+
+        </dl>
+
+
+      
+
+        <!--<input asp-page-handler="Upload" class="btn" type="submit" value="Upload" /> -->
+        <button type="submit">Submit</button>
+
+    </form>
+
+</div>
+
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/polyfill.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.helpers.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/jquery.js"></script>
+
+<script>
+    (function () {
+
+        $('#file-sign').on('click', function (e) {
+            e.preventDefault();
+            var files = document.getElementById('file').files;
+            if (!files.length) {
+                return alert('Не сте избрали файл за подписване');
+            }
+            var reader = new FileReader();
+            reader.onloadend = function (e) {
+              //  SCS.sign(e.target.result)
+                SCS.sign(e.target.result)
+                .then(function (json) {
+                        document.getElementById('XMLsignFile').value = JSON.stringify(json);
+                    })
+                    .then(null, function (err) {
+                        document.getElementById('XMLsignFile').value = 'ERROR:' + "\r\n" + err.message;
+                    });
+            };
+            reader.readAsText(files[0]);
+           // console.log(reader);
+        });
+
+    }());
+</script>
+
+
