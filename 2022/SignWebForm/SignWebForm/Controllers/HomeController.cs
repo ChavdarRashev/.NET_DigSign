@@ -151,10 +151,31 @@ namespace SignWebForm.Controllers
                 err = e.Message;
             }
 
+            X509Certificate2Collection certs = cms.Certificates;  // От pkcs#7 се взима серрификата
+
+
+            foreach (X509Certificate2 mCert in certs)  // Извличане на данните от  сертификата
+            {
+                string df = mCert.SerialNumber;
+                string dd = mCert.Subject;
+                string dd3 = mCert.Issuer;
+                string dd4 = mCert.Thumbprint;
+                //string dd6 = mCert.IssuerName;
+                bool fff = mCert.Verify();  // Проверка на сертификат, подобна на тази по-горе. Не се проверява веригата, ревокейшун листа и дали е издаден от съответния CA
+                                            // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
+               // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
+
+            }
+
+            string retMass;
+            if (err == "no error") retMass = "No error. Signature and certificate are valid.";
+            else retMass = "Error! " + err;
 
 
 
-            ViewBag.signFile = fileInput.XMLsignFile;
+
+           // ViewBag.signFile = fileInput.XMLsignFile;
+            ViewBag.signFile = retMass;
             return View();
         }
 
@@ -163,14 +184,19 @@ namespace SignWebForm.Controllers
         public async Task<IActionResult> ReportText(SignFormText formText)
         {
             
+            //ToDo 1. Текст на кирилица се проверява грешно!
+            //ToDo 2. На по-бавни компютри прозореца за избор на сертификат много бавно се показва
 
             JObject jsonSign = JObject.Parse(formText.TextSign);
             string pkcs7 = (string)jsonSign["signature"];
 
             string tmp = formText.Text;
-            var ddd = Encoding.UTF8.GetBytes(tmp);
-            tmp = Convert.ToString(ddd);
-            
+            // var ddd = Encoding.UTF8.GetBytes(tmp);
+            // tmp = Convert.ToString(ddd);
+
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(tmp);
+            string gr =  System.Convert.ToBase64String(plainTextBytes);
+
 
             byte[] wer = StrToByteArray(formText.Text);
 
