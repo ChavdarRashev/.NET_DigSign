@@ -59,7 +59,7 @@
             var reader = new FileReader();
             reader.onloadend = function (e) {
               //  SCS.sign(e.target.result)
-                SCS.sign(e.target.result)
+                SCS.signEx(e.target.result, 'UTF-8', 'crlf')
                 .then(function (json) {
                         document.getElementById('XMLsignFile').value = JSON.stringify(json);
                     })

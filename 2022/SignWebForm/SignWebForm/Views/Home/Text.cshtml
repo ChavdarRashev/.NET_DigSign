@@ -45,7 +45,7 @@
             if (!val.length) {
                 return alert('Не сте въвели текст за подписване');
             }
-            SCS.sign(val)
+            SCS.signEx(val, 'UTF-8', 'crlf')
                 .then(function (json) {
                     document.getElementById('TextSign').value = JSON.stringify(json);
                     //document.getElementById('TextSign').value = JSON.Base64Decode(json);

@@ -128,6 +128,13 @@ namespace SignWebForm.Controllers
            
             string inputContent = System.IO.File.ReadAllText(filePath);
 
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(inputContent);
+
+            //Тук не работи файлове с кирилски символи
+            // Тества се UTF8 , ToBase64String и т.н но не работи
+
+            //string gr = System.Convert.ToBase64String(plainTextBytes);
+
             byte[] wer = StrToByteArray(inputContent);
 
             ContentInfo contentInfo = new ContentInfo(wer);
