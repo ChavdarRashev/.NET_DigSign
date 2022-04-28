@@ -89,6 +89,13 @@ namespace SignWebForm.Controllers
             string SerialNumber = cert.SerialNumber;
             string Subject = cert.Subject;
             string Issuer = cert.Issuer;
+
+            //Долните три коментирани реда , не връщат повече информация от колкото cert.Subject и cert.Issuer
+            //X500DistinguishedName IssuerName = cert.IssuerName;
+            //string nameI = IssuerName.Name;
+            //X500DistinguishedName userName = cert.SubjectName;
+
+
             string Thumbprint = cert.Thumbprint;  // Уникален параметър , който може да служи за идентификация. Примерно при логване с клиент сертификат трябва да се провери дали Thumbprint от сесията при ligin-a съответсва с Thumbprint на подписа
             //string IssuerName = cert.IssuerName;
             
@@ -110,14 +117,13 @@ namespace SignWebForm.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ReportFile(InputFileModel fileInput)
+        public async Task<IActionResult> ReportFile1(InputFileModel fileInput)
         {
             var formFile = fileInput.file;
 
-          
-            JObject jsonSign = JObject.Parse(fileInput.XMLsignFile);
-            string pkcs7 = (string)jsonSign["signature"];
 
+            string fileString = fileInput.FileSignFile;
+           
             var filePath = Path.GetTempFileName();
 
             using (var stream = System.IO.File.Create(filePath))
@@ -125,12 +131,54 @@ namespace SignWebForm.Controllers
                 await formFile.CopyToAsync(stream);
             }
 
-           
+
             string inputContent = System.IO.File.ReadAllText(filePath);
 
             var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(inputContent);
 
-            //Тук не работи файлове с кирилски символи
+            string result;
+
+            if (inputContent== fileString)
+            {
+                result = "Да";
+            }
+            else
+            {
+                result = "Не";
+            }
+
+            //Тук не работи файлове с кирилски символи. Работи в txt файлове с които има латински символи
+            // Тества се UTF8 , ToBase64String и т.н но не работи
+
+            //string gr = System.Convert.ToBase64String(plainTextBytes);
+
+            
+            return View();
+        }
+
+        public async Task<IActionResult> ReportFile(InputFileModel fileInput)
+        {
+            var formFile = fileInput.file;  // 
+
+
+            JObject jsonSign = JObject.Parse(fileInput.FileSignFile); // В textarea от формата  с име FileSignFile съсъдржа json стринг образуван от подписващия Java софтуер. Този json е случаен формат на Java разработчика, a не е някакъв стандартизиран.
+
+            string pkcs7 = (string)jsonSign["signature"]; // от JSON-a взимаме елемента с име signature - това е подписа в PKCS#7 формат
+
+            var filePath = Path.GetTempFileName();
+            using (var stream = System.IO.File.Create(filePath))
+            {
+                await formFile.CopyToAsync(stream);
+            }
+
+
+            string inputContent = System.IO.File.ReadAllText(filePath);
+
+            string inputContent1 = Uri.EscapeDataString(inputContent);
+
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(inputContent1);
+
+            //Тук не работи файлове с кирилски символи. Работи в txt файлове с които има латински символи
             // Тества се UTF8 , ToBase64String и т.н но не работи
 
             //string gr = System.Convert.ToBase64String(plainTextBytes);
@@ -141,10 +189,7 @@ namespace SignWebForm.Controllers
 
             SignedCms cms = new SignedCms(contentInfo, true);
             cms.Decode(Convert.FromBase64String(pkcs7));
-            bool wwb = cms.Detached;
-
-            ContentInfo ci = cms.ContentInfo;
-
+           
             string err = "no error";
 
 
@@ -170,7 +215,7 @@ namespace SignWebForm.Controllers
                 //string dd6 = mCert.IssuerName;
                 bool fff = mCert.Verify();  // Проверка на сертификат, подобна на тази по-горе. Не се проверява веригата, ревокейшун листа и дали е издаден от съответния CA
                                             // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
-               // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
+                                            // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
 
             }
 
@@ -181,7 +226,7 @@ namespace SignWebForm.Controllers
 
 
 
-           // ViewBag.signFile = fileInput.XMLsignFile;
+            // ViewBag.signFile = fileInput.XMLsignFile;
             ViewBag.signFile = retMass;
             return View();
         }
@@ -190,37 +235,29 @@ namespace SignWebForm.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReportText(SignFormText formText)
         {
-            
-            //ToDo 1. Текст на кирилица се проверява грешно!
-            //ToDo 2. На по-бавни компютри прозореца за избор на сертификат много бавно се показва
+           
+            //ToDo 1. На по-бавни компютри прозореца за избор на сертификат много бавно се показва
 
-            JObject jsonSign = JObject.Parse(formText.TextSign);
-            string pkcs7 = (string)jsonSign["signature"];
+            JObject jsonSign = JObject.Parse(formText.TextSign);  // В textarea от формата  с име TextSign съсъдржа json стринг образуван от подписващия Java софтуер. Този json е случаен формат на разработчика е не е някакъв стандартизиран.
+            string pkcs7 = (string)jsonSign["signature"]; // от JSON-a взимаме елемента с име signature - това е подписа в PKCS#7 формат
 
-            string tmp = formText.Text;
-            // var ddd = Encoding.UTF8.GetBytes(tmp);
-            // tmp = Convert.ToString(ddd);
+            string tmp = formText.Text;  // В textarea от формата  с име е текста, който подписваме.
+           
 
-            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(tmp);
-            string gr =  System.Convert.ToBase64String(plainTextBytes);
+            byte[] wer = StrToByteArray(formText.Text);  // Масив от туп byte (In C#, byte is the data type for 8-bit unsigned integers, so a byte[] should be an array of integers who are between 0 and 255), ако formText.Text съдържа string "abc", то масива ще има три стойности 97, 98, 99
 
+            ContentInfo contentInfo = new ContentInfo(wer);   // The ContentInfo class represents the CMS/PKCS #7 ContentInfo data structure as defined in the CMS/PKCS #7 standards document. This data structure is the basis for all CMS/PKCS #7 messages.
 
-            byte[] wer = StrToByteArray(formText.Text);
+            SignedCms cms = new SignedCms(contentInfo, true);  //The SignedCms class enables signing and verifying of CMS/PKCS #7 messages. true параметъра показва signature is detached това значи, че съобщението (текстът), който се подписва не се съдържа в подписа. In PKCS#7 SignedData, attached and detached formats are supported… In detached format, data that is signed is not embedded inside the SignedData package instead it is placed at some external location…
+                                                               
+             cms.Decode(Convert.FromBase64String(pkcs7));  //Decodes  SignedCms message. Декодира подписа, като подписа му се подава, като array от byte
 
-            ContentInfo contentInfo = new ContentInfo(wer);
-
-            SignedCms cms = new SignedCms(contentInfo, true);
-            cms.Decode(Convert.FromBase64String(pkcs7));
-            bool wwb = cms.Detached;
-
-            ContentInfo ci = cms.ContentInfo;
-
-            string err = "no error";
+            string err = "No error. Signature and certificate, are valid.";
 
 
             try
             {
-              cms.CheckSignature(false); // Проверява се signature и подписа, проверява се само валидността на подписа, но не и на веригта
+              cms.CheckSignature(false); // Проверява се подписа и сертификата. Проверява се само валидността на подписа, но не и на веригата. If is true, only the digital signatures are verified. If it is false, the digital signatures are verified, the signers' certificates are validated, and the purposes of the certificates are validated.
             }
 
             catch (Exception e)
@@ -229,9 +266,8 @@ namespace SignWebForm.Controllers
             }
 
 
-
-
             ViewBag.signText = formText.TextSign;
+            ViewBag.err = err;
             return View();
         }
 

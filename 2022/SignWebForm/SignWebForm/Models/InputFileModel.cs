@@ -12,6 +12,6 @@ namespace SignWebForm.Models
         [Required(ErrorMessage = "Не сте прикачели файл.")]
         [Display(Name = "Файл")]
         public IFormFile file { get; set; }
-        public string XMLsignFile {get; set;}
+        public string FileSignFile { get; set;}
     }
 }

@@ -24,10 +24,10 @@
             </dd>
 
             <dt>
-               <label asp-for="XMLsignFile" style="vertical-align: top;"> Signed content: </label>
+               <label asp-for="FileSignFile" style="vertical-align: top;"> Signed content: </label>
             </dt>
             <dd>               
-                <textarea rows="10" cols="50" asp-for="XMLsignFile">	</textarea>
+                <textarea rows="10" cols="50" asp-for="FileSignFile">	</textarea>
             </dd>
 
         </dl>
@@ -58,13 +58,17 @@
             }
             var reader = new FileReader();
             reader.onloadend = function (e) {
-              //  SCS.sign(e.target.result)
-                SCS.signEx(e.target.result, 'UTF-8', 'crlf')
+               // var res = encodeURIComponent(e.target.result);
+                var res = btoa(e.target.result);
+                console.log(res)
+             // SCS.sign(res)
+                SCS.signEx(res, 'UTF-8', 'crlf')
                 .then(function (json) {
-                        document.getElementById('XMLsignFile').value = JSON.stringify(json);
+                  //  console.log(json)                    
+                    document.getElementById('FileSignFile').value = JSON.stringify(json);
                     })
                     .then(null, function (err) {
-                        document.getElementById('XMLsignFile').value = 'ERROR:' + "\r\n" + err.message;
+                        document.getElementById('FileSignFile').value = 'ERROR:' + "\r\n" + err.message;
                     });
             };
             reader.readAsText(files[0]);

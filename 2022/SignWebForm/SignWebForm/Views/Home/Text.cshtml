@@ -12,7 +12,7 @@
         <div class="row py-4">
             <div class="col">
                 <label for="xml" style="vertical-align: top;"> Text </label>
-                <textarea rows="15" cols="50" id="text" name="text"> &lt;Envelope xmlns=&quot;urn:envelope&quot;&gt;&lt;/Envelope&gt;</textarea>
+                <textarea rows="15" cols="50" id="text" name="text"></textarea>
             </div>
             <div class="col">
                 <label for="result" style="vertical-align: top;"> Signed content: </label>
@@ -42,6 +42,7 @@
         $('#text-sign').on('click', function (e) {
             e.preventDefault();
             var val = document.getElementById('text').value;
+            console.log(val);
             if (!val.length) {
                 return alert('Не сте въвели текст за подписване');
             }
