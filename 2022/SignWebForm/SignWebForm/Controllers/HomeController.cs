@@ -40,6 +40,11 @@ namespace SignWebForm.Controllers
             return View();
         }
 
+        public IActionResult FileSCS()
+        {
+            return View();
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Report(SignForm res)
@@ -268,6 +273,65 @@ namespace SignWebForm.Controllers
 
             ViewBag.signText = formText.TextSign;
             ViewBag.err = err;
+            return View();
+        }
+
+        public async Task<IActionResult> ReportFileSCS(InputFileModel fileInput)
+        {
+            var formFile = fileInput.file;  //  https://ado.me.uk/post/decrypting-pkcs7-message-with-c
+
+
+            JObject jsonSign = JObject.Parse(fileInput.FileSignFile); // В textarea от формата  с име FileSignFile сe съдржа json стринг образуван от подписващия Java софтуер. Този json е случаен формат на Java разработчика, a не е някакъв стандартизиран.
+
+            string pkcs7 = (string)jsonSign["signature"]; // от JSON-a взимаме елемента с име signature - това е подписа в PKCS#7 формат
+
+            
+
+            
+
+
+
+            SignedCms cms = new SignedCms();
+            cms.Decode(Convert.FromBase64String(pkcs7));
+
+            string err = "no error";
+
+
+            try
+            {
+                cms.CheckSignature(false); // Проверява се signature и подписа, проверява се само валидността на подписа, но не и на веригта
+            }
+
+            catch (Exception e)
+            {
+                err = e.Message;
+            }
+
+            X509Certificate2Collection certs = cms.Certificates;  // От pkcs#7 се взима серрификата
+
+
+            foreach (X509Certificate2 mCert in certs)  // Извличане на данните от  сертификата
+            {
+                string df = mCert.SerialNumber;
+                string dd = mCert.Subject;
+                string dd3 = mCert.Issuer;
+                string dd4 = mCert.Thumbprint;
+                //string dd6 = mCert.IssuerName;
+                bool fff = mCert.Verify();  // Проверка на сертификат, подобна на тази по-горе. Не се проверява веригата, ревокейшун листа и дали е издаден от съответния CA
+                                            // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
+                                            // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
+
+            }
+
+            string retMass;
+            if (err == "no error") retMass = "No error. Signature and certificate are valid.";
+            else retMass = "Error! " + err;
+
+
+
+
+            // ViewBag.signFile = fileInput.XMLsignFile;
+            ViewBag.signFile = retMass;
             return View();
         }
 

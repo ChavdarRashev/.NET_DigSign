@@ -58,11 +58,12 @@
             }
             var reader = new FileReader();
             reader.onloadend = function (e) {
-               // var res = encodeURIComponent(e.target.result);
-                var res = btoa(e.target.result);
-                console.log(res)
-             // SCS.sign(res)
-                SCS.signEx(res, 'UTF-8', 'crlf')
+                var res = encodeURIComponent(e.target.result);
+               //  var res = btoa(e.target.result);
+               
+               console.log(res)
+             SCS.sign(res)
+              //  SCS.signEx(res, 'UTF-8', 'crlf')
                 .then(function (json) {
                   //  console.log(json)                    
                     document.getElementById('FileSignFile').value = JSON.stringify(json);

@@ -1,0 +1,62 @@
+﻿@model SignWebForm.Models.InputFileModel
+@{
+    ViewData["Title"] = "Web Form with file Sign";
+}
+
+
+
+<div>
+    <form asp-controller="Home" asp-action="ReportFileSCS" enctype="multipart/form-data" method="post" >
+
+
+        <dl>
+
+           
+
+            <dd style="margin: 20px">
+                <input type="button" id="pick-sign" name="btnTest" value="Test Sign" />
+            </dd>
+
+            <dt>
+               <label asp-for="FileSignFile" style="vertical-align: top;"> Signed content: </label>
+            </dt>
+            <dd>               
+                <textarea rows="10" cols="50" asp-for="FileSignFile">	</textarea>
+            </dd>
+
+        </dl>
+
+
+      
+
+        <!--<input asp-page-handler="Upload" class="btn" type="submit" value="Upload" /> -->
+        <button type="submit">Submit</button>
+
+    </form>
+
+</div>
+
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/polyfill.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.helpers.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/jquery.js"></script>
+
+<script>
+    (function () {
+
+
+        $('#pick-sign').on('click', function (e) {
+            e.preventDefault();
+            SCS.signFile()
+                .then(function (json) {
+                    document.getElementById('FileSignFile').value = JSON.stringify(json);
+                })
+                .then(null, function (err) {
+                    document.getElementById('FileSignFile').value = 'ERROR:' + "\r\n" + err.message;
+                });
+        });
+
+    }());
+</script>
+
+
