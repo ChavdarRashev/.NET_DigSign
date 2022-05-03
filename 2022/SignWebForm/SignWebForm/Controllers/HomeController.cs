@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -16,7 +17,10 @@ using System.Xml;
 
 namespace SignWebForm.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController : Controller  
+        //ToDo да се направи проверка на издателя на сертификата - дали този сертификат е издаден от съответния издател. Това се прави само ако WEB сървъра не проверява предварително и не допуска само потребители със сертификати от определен доставчик.
+
+        //да се направи софтуер, който да проверява вече направен подпис срещу съдържанието или файла или xml-a
     {
         private readonly ILogger<HomeController> _logger;
 
@@ -120,48 +124,11 @@ namespace SignWebForm.Controllers
         }
 
 
+        
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ReportFile1(InputFileModel fileInput)
-        {
-            var formFile = fileInput.file;
-
-
-            string fileString = fileInput.FileSignFile;
-           
-            var filePath = Path.GetTempFileName();
-
-            using (var stream = System.IO.File.Create(filePath))
-            {
-                await formFile.CopyToAsync(stream);
-            }
-
-
-            string inputContent = System.IO.File.ReadAllText(filePath);
-
-            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(inputContent);
-
-            string result;
-
-            if (inputContent== fileString)
-            {
-                result = "Да";
-            }
-            else
-            {
-                result = "Не";
-            }
-
-            //Тук не работи файлове с кирилски символи. Работи в txt файлове с които има латински символи
-            // Тества се UTF8 , ToBase64String и т.н но не работи
-
-            //string gr = System.Convert.ToBase64String(plainTextBytes);
-
-            
-            return View();
-        }
-
-        public async Task<IActionResult> ReportFile(InputFileModel fileInput)
+        public async Task<IActionResult> ReportFile(InputFileModel fileInput)  //Кодът е идентичен с по-долните два метода виж там за коменмтари
         {
             var formFile = fileInput.file;  // 
 
@@ -200,7 +167,7 @@ namespace SignWebForm.Controllers
 
             try
             {
-                cms.CheckSignature(false); // Проверява се signature и подписа, проверява се само валидността на подписа, но не и на веригта
+                cms.CheckSignature(false); // Проверява се подписа и сертификата. Проверява се само валидността на подписа, но не и на веригата. If is true, only the digital signatures are verified. If it is false, the digital signatures are verified, the signers' certificates are validated, and the purposes of the certificates are validated.
             }
 
             catch (Exception e)
@@ -218,9 +185,9 @@ namespace SignWebForm.Controllers
                 string dd3 = mCert.Issuer;
                 string dd4 = mCert.Thumbprint;
                 //string dd6 = mCert.IssuerName;
-                bool fff = mCert.Verify();  // Проверка на сертификат, подобна на тази по-горе. Не се проверява веригата, ревокейшун листа и дали е издаден от съответния CA
-                                            // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
-                                            // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
+                bool fff = mCert.Verify();  // Проверка на сертификат дали е валиден и проверява да не е в ревокейшън листа.Тази проверка е подобна на на тази по-горе cms.CheckSignature. Не се проверява сертификатите по веригата дали те не са в ревокейшун листа и дали е издаден от съответния CA. За да работи този метод трябва на компютъра(сървъра), който на който се изпълнява този код да е инсталиран root сертификата на издателя.
+                // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
+               // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател - този код може да се види във версията от 2014 г в това репозитори
 
             }
 
@@ -278,20 +245,29 @@ namespace SignWebForm.Controllers
 
         public async Task<IActionResult> ReportFileSCS(InputFileModel fileInput)
         {
-            var formFile = fileInput.file;  //  https://ado.me.uk/post/decrypting-pkcs7-message-with-c
+            var formFile = fileInput.file;  
 
 
             JObject jsonSign = JObject.Parse(fileInput.FileSignFile); // В textarea от формата  с име FileSignFile сe съдржа json стринг образуван от подписващия Java софтуер. Този json е случаен формат на Java разработчика, a не е някакъв стандартизиран.
 
             string pkcs7 = (string)jsonSign["signature"]; // от JSON-a взимаме елемента с име signature - това е подписа в PKCS#7 формат
 
+            string fileContent = (string)jsonSign["filecontent"]; // Съдържанието на файла компресирано чрез gzip. Java софтуерът за подписване stampitls.jnlp на потребителския компютър компресира файла в gzip формат, прави го в base64  стринг и го слага в JSON полето  filecontent, като преди това прави подписа чрез хаш стойност на оргиналния файл
+            string fileName = (string)jsonSign["filename"]; // Името на некомпресирания файл 
+
+
+            byte[] decoded = Convert.FromBase64String(fileContent);  // от base64 в byte масив. Всеки един елемент от този масив съдържа неотризателно 8 битово число. Пример: текстови файл с три символа "abc" се предсавя в паметта, като 01100001 01100010 01100011  или  97, 98, 99 в десетична система или 61, 62, 63 с шейсетнатична система. "abc" в base64 ще бъде """". Следователно горния код прави текстови файл "abc" , който base64 "YWJj" в масив byte[] с три стойности 97, 98, 99
             
+            byte[] decompressed = Decompress(decoded); // Декомпресира gzip в byte[] масив. Виж по-долу метода
 
-            
+           // System.IO.File.WriteAllBytes(@"c:\tempZatTriene\kaval.txt", decompressed);  //Записваме файла във файловата система на компютъра
 
 
 
-            SignedCms cms = new SignedCms();
+            ContentInfo contentInfo = new ContentInfo(decompressed);  // The ContentInfo class represents the CMS/PKCS #7 ContentInfo data structure as defined in the CMS/PKCS #7 standards document. This data structure is the basis for all CMS/PKCS #7 messages.
+
+            SignedCms cms = new SignedCms(contentInfo, true); //The SignedCms class enables signing and verifying of CMS/PKCS #7 messages. true параметъра показва signature is detached това значи, че съобщението (текстът), който се подписва не се съдържа в подписа. In PKCS#7 SignedData, attached and detached formats are supported… In detached format, data that is signed is not embedded inside the SignedData package instead it is placed at some external location…
+
             cms.Decode(Convert.FromBase64String(pkcs7));
 
             string err = "no error";
@@ -299,7 +275,7 @@ namespace SignWebForm.Controllers
 
             try
             {
-                cms.CheckSignature(false); // Проверява се signature и подписа, проверява се само валидността на подписа, но не и на веригта
+                cms.CheckSignature(false); // Проверява се подписа и сертификата. Проверява се само валидността на подписа, но не и на веригата. If is true, only the digital signatures are verified. If it is false, the digital signatures are verified, the signers' certificates are validated, and the purposes of the certificates are validated.
             }
 
             catch (Exception e)
@@ -317,9 +293,9 @@ namespace SignWebForm.Controllers
                 string dd3 = mCert.Issuer;
                 string dd4 = mCert.Thumbprint;
                 //string dd6 = mCert.IssuerName;
-                bool fff = mCert.Verify();  // Проверка на сертификат, подобна на тази по-горе. Не се проверява веригата, ревокейшун листа и дали е издаден от съответния CA
-                                            // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
-                                            // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател
+                bool fff = mCert.Verify();  // Проверка на сертификат дали е валиден и проверява да не е в ревокейшън листа.Тази проверка е подобна на на тази по-горе cms.CheckSignature. Не се проверява сертификатите по веригата дали те не са в ревокейшун листа и дали е издаден от съответния CA. За да работи този метод трябва на компютъра(сървъра), който на който се изпълнява този код да е инсталиран root сертификата на издателя.
+                  // http://stackoverflow.com/questions/10083650/x509certificate2-verify-method-validating-against-revocation-list-and-perform
+                  // err = ValidateCert(mCert);  //Още един начин за проверка на сертификат. Чрез този метод се прави най-пълна проверка на сертификата и неговата верига и дали е издаден от желан CA издател - този код може да се види във версията от 2014 г в това репозитори
 
             }
 
@@ -327,10 +303,6 @@ namespace SignWebForm.Controllers
             if (err == "no error") retMass = "No error. Signature and certificate are valid.";
             else retMass = "Error! " + err;
 
-
-
-
-            // ViewBag.signFile = fileInput.XMLsignFile;
             ViewBag.signFile = retMass;
             return View();
         }
@@ -347,7 +319,27 @@ namespace SignWebForm.Controllers
             return encoding.GetBytes(str);
         }
 
-       
+        
+
+        public static byte[] Decompress(byte[] data)
+        {
+            using (var compressedStream = new MemoryStream(data))
+            using (var zipStream = new GZipStream(compressedStream, CompressionMode.Decompress))
+            using (var resultStream = new MemoryStream())
+            {
+                var buffer = new byte[4096];
+                int read;
+
+                while ((read = zipStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    resultStream.Write(buffer, 0, read);
+                }
+
+                return resultStream.ToArray();
+            }
+        }
+
+
 
 
 
