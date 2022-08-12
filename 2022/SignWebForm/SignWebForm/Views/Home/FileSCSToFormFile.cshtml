@@ -1,0 +1,82 @@
+﻿@model SignWebForm.Models.InputFileModel
+@{
+    ViewData["Title"] = "Web Form with file Sign and file atach to the form";
+}
+
+
+
+<div>
+    <form asp-controller="Home" asp-action="ReportFileSCSToFormFile" enctype="multipart/form-data" method="post">
+
+        <input type="file" id="postFile" name="postFile" style="display:none">
+
+        <dl>
+
+            <dd style="margin: 20px">
+                <input type="button" id="pick-sign" name="btnTest" value="Test Sign" />
+            </dd>
+
+            <dt>
+                    <div>Status</div>
+            </dt>
+            <dd>
+                <div id="status"></div>
+            </dd>
+
+        </dl>
+
+
+
+
+        <!--<input asp-page-handler="Upload" class="btn" type="submit" value="Upload" /> -->
+        <button type="submit">Submit</button>
+
+    </form>
+
+</div>
+
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/polyfill.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/scs/scs.helpers.js"></script>
+<script type="text/javascript" src="https://sign.uslugi.io/assets/jquery.js"></script>
+
+<script>
+    (function () {
+
+        //https://stackoverflow.com/questions/1696877/how-to-set-a-value-to-a-file-input-in-html
+        //https://www.codegrepper.com/code-examples/javascript/how+to+add+blob+to+form+data+in+javascript
+        //https://developer.mozilla.org/en-US/docs/Web/API/File_API/Using_files_from_web_applications
+        //https://pqina.nl/blog/set-value-to-file-input/
+
+        $('#pick-sign').on('click', function (e) {
+            e.preventDefault();
+            document.getElementById('status').innerHTML ="Подписване...";
+            SCS.signFile()
+                .then(function (json) {
+
+                    const fileInput = document.querySelector('input[type="file"]');
+                    // Create a new File object
+                    const postFile = new File([JSON.stringify(json)], 'postFile.json', {
+                        type: 'application/json',
+                        lastModified: new Date(),
+                    });
+
+                    // Now let's create a DataTransfer to get a FileList
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(postFile);
+                    fileInput.files = dataTransfer.files;
+                    var size = fileInput.files[0].size;
+
+                    //document.getElementById('FileSignFile').value = JSON.stringify(json);
+                    document.getElementById('status').innerHTML = "Файлът е подписан. Големина на подписания файл: " + size + " bytes";
+
+                })
+                .then(null, function (err) {
+                    document.getElementById('status').innerHTML = 'ERROR:' + "\r\n" + err.message;
+                });
+        });
+
+    }());
+</script>
+
+
